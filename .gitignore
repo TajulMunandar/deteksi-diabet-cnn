@@ -1,0 +1,5 @@
+# Ignore dataset folder
+dataset/
+
+# Ignore model file
+model_dr.h5

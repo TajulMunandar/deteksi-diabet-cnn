@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Prediksi Diabetes Retinopathy</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <style>
+        body {
+            background-color: #f0f2f5;
+            font-family: "Segoe UI", sans-serif;
+        }
+
+        .container {
+            margin-top: 60px;
+        }
+
+        .card {
+            border-radius: 16px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+            border: none;
+            transition: all 0.3s ease-in-out;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .preview {
+            max-width: 100%;
+            border-radius: 12px;
+            margin-top: 15px;
+        }
+
+        .result-text {
+            font-size: 1rem;
+            font-weight: 500;
+            color: #333;
+        }
+
+        footer {
+            margin-top: 60px;
+            text-align: center;
+            color: #888;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="text-center mb-5">
+            <h1 class="display-6">🩺 Prediksi Diabetes Retinopathy</h1>
+            <p class="text-muted">Unggah gambar retina atau latih ulang model untuk meningkatkan akurasi</p>
+        </div>
+
+        <div class="row g-4">
+            <!-- Prediksi -->
+            <div class="col-md-6">
+                <div class="card p-4 h-100">
+                    <h5 class="mb-3">🔍 Prediksi Retinopati</h5>
+                    <form method="POST" enctype="multipart/form-data" action="/">
+                        <div class="mb-3">
+                            <label for="image" class="form-label">Upload Gambar Retina</label>
+                            <input class="form-control" type="file" name="image" id="image" required />
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Prediksi</button>
+                    </form>
+
+                    {% if uploaded_image %}
+                    <div class="mt-4 text-center">
+                        <img src="{{ url_for('static', filename='upload/' + uploaded_image) }}" class="preview"
+                            alt="Gambar Retina" />
+                    </div>
+                    <div class="mt-3">
+                        <p class="result-text">🩺 <strong>Diagnosa:</strong> {{ pred_binary }}</p>
+                        <p class="result-text">🩺 <strong>Diagnosa 5 Class:</strong> {{ pred_5class }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Training -->
+            <div class="col-md-6">
+                <div class="card p-4 h-100">
+                    <h5 class="mb-3">🚀 Latih Ulang Model</h5>
+                    <form method="POST" action="/train">
+                        <p class="text-muted small">Latih ulang model dengan dataset terbaru untuk meningkatkan akurasi
+                            prediksi.</p>
+                        <button type="submit" class="btn btn-success w-100 mt-4"
+                            onclick="this.innerHTML='⏳ Melatih...'; this.form.submit();">
+                            🚀 Train Model
+                        </button>
+                    </form>
+
+                    {% if training_result %}
+                    <div class="mt-4">
+                        <h6>📈 Hasil Pelatihan:</h6>
+                        <ul class="result-text">
+                            <li><strong>Akurasi:</strong> {{ training_result.accuracy }}%</li>
+                            <li><strong>Loss:</strong> {{ training_result.loss }}</li>
+                            <li><strong>Model disimpan:</strong> {{ training_result.model_path }}</li>
+                        </ul>
+                    </div>
+                    {% endif %}
+
+                    {% if training_log %}
+                    <div class="mt-4">
+                        <h6>📝 Log Training:</h6>
+                        <pre
+                            style="background-color: #f8f9fa; padding: 10px; border-radius: 8px; font-size: 0.85rem; max-height: 300px; overflow-y: auto;">
+                            {{ training_log }}
+                                </pre>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <footer class="mt-5">
+            <p>© 2025 DR Predictor | Made with ❤️</p>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        const trainForm = document.querySelector('form[action="/train"]');
+        trainForm.addEventListener("submit", function (e) {
+            e.preventDefault();
+
+            const button = this.querySelector("button");
+            button.innerHTML = "⏳ Melatih...";
+
+            const logContainer = document.createElement("pre");
+            logContainer.style.backgroundColor = "#f8f9fa";
+            logContainer.style.padding = "10px";
+            logContainer.style.borderRadius = "8px";
+            logContainer.style.fontSize = "0.85rem";
+            logContainer.style.maxHeight = "300px";
+            logContainer.style.overflowY = "auto";
+            logContainer.textContent = "🚀 Memulai training...\n";
+
+            const trainingCard = this.closest(".card");
+            trainingCard.appendChild(logContainer);
+
+            const eventSource = new EventSource("/stream-train");
+
+            eventSource.onmessage = function (event) {
+                logContainer.textContent += event.data + "\n";
+                logContainer.scrollTop = logContainer.scrollHeight;
+
+                // Jika proses sudah selesai, matikan koneksi
+                if (event.data.includes("Training selesai")) {
+                    eventSource.close();
+                    button.innerHTML = "🚀 Train Model";
+                }
+            };
+
+            eventSource.onerror = function (err) {
+                logContainer.textContent += "\n❌ Terjadi kesalahan saat streaming.";
+                eventSource.close();
+            };
+        });
+    </script>
+</body>
+
+</html>
